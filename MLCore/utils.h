@@ -1,12 +1,19 @@
 #pragma once
 
+#ifdef WINDOWS
 #include <windows.h>
 #include <dbghelp.h>
+#endif
+
 #include <sstream>
+#include <type_traits>
+#include <stdexcept>
 
 #include "common.h"
 
+#ifdef WINDOWS
 #pragma comment(lib, "Dbghelp.lib") // Link the DbgHelp library
+#endif
 
 namespace OrtUtils {
 	/**
@@ -26,6 +33,7 @@ namespace OrtUtils {
 	std::string ToProviderString(ExecutionProvider provider);
 }
 
+#ifdef WINDOWS
 /**
  * @brief Utility to check if a function fails (returns a failing HRESULT) or throws an exception.
  *
@@ -62,3 +70,21 @@ void ThrowIfFailed(HRESULT result);
  *         the frame is labeled as `[unknown symbol]`.
  */
 std::string GetStackTrace();
+#endif
+
+#define DEFINE_THROW_MACRO(exceptionType, msg) \
+    do { \
+        Logger::Log(msg, Logger::Type::Error); \
+        throw exceptionType(msg); \
+    } while (0)
+
+// Define all THROW macros
+#define THROW_RUNTIME_ERROR(msg) DEFINE_THROW_MACRO(std::runtime_error, msg)
+#define THROW_LOGIC_ERROR(msg)   DEFINE_THROW_MACRO(std::logic_error, msg)
+#define THROW_INVALID_ARGUMENT(msg) DEFINE_THROW_MACRO(std::invalid_argument, msg)
+#define THROW_OUT_OF_RANGE(msg) DEFINE_THROW_MACRO(std::out_of_range, msg)
+#define THROW_LENGTH_ERROR(msg) DEFINE_THROW_MACRO(std::length_error, msg)
+#define THROW_DOMAIN_ERROR(msg) DEFINE_THROW_MACRO(std::domain_error, msg)
+#define THROW_OVERFLOW_ERROR(msg) DEFINE_THROW_MACRO(std::overflow_error, msg)
+#define THROW_UNDERFLOW_ERROR(msg) DEFINE_THROW_MACRO(std::underflow_error, msg)
+#define THROW_SYSTEM_ERROR(msg) DEFINE_THROW_MACRO(std::system_error, msg)

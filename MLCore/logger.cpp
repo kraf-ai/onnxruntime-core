@@ -4,23 +4,34 @@ void Logger::Init(const std::string& fileName) {
     if (logFile.is_open())
         logFile.close();
 
-    // Get the path of the executable
+    std::filesystem::path logFilePath;
+
+#ifdef _WIN32
     char exePath[MAX_PATH];
     GetModuleFileNameA(nullptr, exePath, MAX_PATH);
-
-    // Get the directory of the executable
     std::filesystem::path exeDir = std::filesystem::path(exePath).parent_path();
+    logFilePath = exeDir / fileName;
+#else
+    // Cross-platform alternative to get the current working directory
+    char exePath[1024];
+    ssize_t len = readlink("/proc/self/exe", exePath, sizeof(exePath) - 1);
+    if (len == -1) 
+        THROW_RUNTIME_ERROR("Failed to get executable path");
 
-    // Set the log file path relative to the executable directory
-    std::filesystem::path logFilePath = exeDir / fileName;
+    exePath[len] = '\0';
+    std::filesystem::path exeDir = std::filesystem::path(exePath).parent_path();
+    logFilePath = exeDir / fileName;
+#endif
 
     logFile.open(logFilePath, std::ios::app);
 
     if (!logFile)
-        throw std::runtime_error("Failed to open the log file: " + logFilePath.string());
+        THROW_RUNTIME_ERROR("Failed to open the log file: " + logFilePath.string());
+
 
     std::cout << "Log file path: " << logFilePath.string() << std::endl;
 }
+
 
 void Logger::Log(const std::string& message, Type logType) {
     if (!logFile) {

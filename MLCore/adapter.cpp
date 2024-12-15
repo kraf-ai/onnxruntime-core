@@ -1,162 +1,171 @@
 #include "adapter.h"
 
+#ifdef WINDOWS
+#include <windows.h>
+#include <dxgi1_6.h>
+#include <d3d12.h>
+#include <DirectML.h>
+#endif
+
 namespace MLBackend {
-	AdapterInfo Adapter::GetMostPowerfulAdapter(OrtUtils::ExecutionProvider& executionProvider) {
-		return GetAdapter(DXGI_GPU_PREFERENCE::DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, executionProvider);
-		
-	}
+    AdapterInfo Adapter::GetMostPowerfulAdapter(OrtUtils::ExecutionProvider& executionProvider) {
+#ifdef WINDOWS
+        return GetAdapter(DXGI_GPU_PREFERENCE::DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, executionProvider);
+#else
+        THROW_RUNTIME_ERROR("Adapters are only available on Windows platforms.");
+#endif
+    }
 
-	AdapterInfo Adapter::GetMostEfficientAdapter(OrtUtils::ExecutionProvider& executionProvider) {
-		return GetAdapter(DXGI_GPU_PREFERENCE::DXGI_GPU_PREFERENCE_MINIMUM_POWER, executionProvider);
+    AdapterInfo Adapter::GetMostEfficientAdapter(OrtUtils::ExecutionProvider& executionProvider) {
+#ifdef WINDOWS
+        return GetAdapter(DXGI_GPU_PREFERENCE::DXGI_GPU_PREFERENCE_MINIMUM_POWER, executionProvider);
+#else
+        THROW_RUNTIME_ERROR("Adapters are only available on Windows platforms.");
+#endif
+    }
 
-	}
+    void Adapter::PrintAdapterDetails(AdapterInfo& adapterInfo) {
+#ifdef WINDOWS
+        const DXGI_ADAPTER_DESC3& desc = adapterInfo.desc;
 
-	void Adapter::PrintAdapterDetails(AdapterInfo& adapterInfo) {
-		const DXGI_ADAPTER_DESC3& desc = adapterInfo.desc;
+        // Convert wide-character description to a narrow string for logging
+        std::wstring wDescription(desc.Description);
+        int sizeNeeded = WideCharToMultiByte(CP_UTF8, 0, wDescription.c_str(), -1, nullptr, 0, nullptr, nullptr);
+        std::string description(sizeNeeded, 0);
+        WideCharToMultiByte(CP_UTF8, 0, wDescription.c_str(), -1, &description[0], sizeNeeded, nullptr, nullptr);
 
-		// Convert wide-character description to a narrow string for logging
-		std::wstring wDescription(desc.Description);
-		int sizeNeeded = WideCharToMultiByte(CP_UTF8, 0, wDescription.c_str(), -1, nullptr, 0, nullptr, nullptr);
-		std::string description(sizeNeeded, 0);
-		WideCharToMultiByte(CP_UTF8, 0, wDescription.c_str(), -1, &description[0], sizeNeeded, nullptr, nullptr);
+        // Log the adapter details
+        Log("Adapter Details:");
+        Log("Description: " + description);
+        Log("Dedicated Video Memory: " + std::to_string(desc.DedicatedVideoMemory / (1024 * 1024)) + " MB");
+        Log("Dedicated System Memory: " + std::to_string(desc.DedicatedSystemMemory / (1024 * 1024)) + " MB");
+        Log("Shared System Memory: " + std::to_string(desc.SharedSystemMemory / (1024 * 1024)) + " MB");
+        Log("Adapter Flags: " + std::to_string(desc.Flags));
+#endif
+    }
 
-		// Log the adapter details
-		Log("Adapter Details:");
-		Log("Description: " + description);
-		Log("Dedicated Video Memory: " + std::to_string(desc.DedicatedVideoMemory / (1024 * 1024)) + " MB");
-		Log("Dedicated System Memory: " + std::to_string(desc.DedicatedSystemMemory / (1024 * 1024)) + " MB");
-		Log("Shared System Memory: " + std::to_string(desc.SharedSystemMemory / (1024 * 1024)) + " MB");
-		Log("Adapter Flags: " + std::to_string(desc.Flags));
-	}
+    AdapterInfo Adapter::GetAdapter(DXGI_GPU_PREFERENCE gpuPreference, OrtUtils::ExecutionProvider& executionProvider) {
+#ifdef WINDOWS
+        ComPtr<IDXGIFactory6> factory;
+        ThrowIfFailed(CreateDXGIFactory1(IID_PPV_ARGS(&factory)));
 
-	AdapterInfo Adapter::GetAdapter(DXGI_GPU_PREFERENCE gpuPreference, OrtUtils::ExecutionProvider& executionProvider) {
-		ComPtr<IDXGIFactory6> factory;
-		ThrowIfFailed(CreateDXGIFactory1(IID_PPV_ARGS(&factory)));
+        AdapterInfo bestAdapter = {};
+        SIZE_T bestMetric = (gpuPreference == DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE) ? 0 : SIZE_MAX;
 
-		AdapterInfo bestAdapter = {};
-		SIZE_T bestMetric = (gpuPreference == DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE) ? 0 : SIZE_MAX;
+        ComPtr<IDXGIAdapter4> adapter;
+        UINT adapterIndex = 0;
 
-		ComPtr<IDXGIAdapter4> adapter;
-		UINT adapterIndex = 0;
+        while (SUCCEEDED(factory->EnumAdapterByGpuPreference(adapterIndex++, gpuPreference, IID_PPV_ARGS(&adapter)))) {
+            DXGI_ADAPTER_DESC3 desc;
+            adapter->GetDesc3(&desc);
 
-		while (SUCCEEDED(factory->EnumAdapterByGpuPreference(adapterIndex++, gpuPreference, IID_PPV_ARGS(&adapter)))) {
-			DXGI_ADAPTER_DESC3 desc;
-			adapter->GetDesc3(&desc);
+            bool isSoftwareAdapter = (desc.Flags & DXGI_ADAPTER_FLAG3_SOFTWARE);
 
-			// Software adapters are not backed by physical GPUs and rely on the CPU to emulate GPU functionality.
-			// Some examples are the `Microsoft Basic Render Driver` or `WARP Adapter`.
-			// These adapters are significantly slower and unsuitable for machine learning.
-			bool isSoftwareAdapter = (desc.Flags & DXGI_ADAPTER_FLAG3_SOFTWARE);
+            if (!isSoftwareAdapter) {
+                bool betterChoice = false;
+                if (gpuPreference == DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE) {
+                    if (desc.DedicatedVideoMemory > bestMetric) {
+                        bestMetric = desc.DedicatedVideoMemory;
+                        betterChoice = true;
+                    }
+                }
+                else if (gpuPreference == DXGI_GPU_PREFERENCE_MINIMUM_POWER) {
+                    if (desc.DedicatedVideoMemory < bestMetric) {
+                        bestMetric = desc.DedicatedVideoMemory;
+                        betterChoice = true;
+                    }
+                }
 
-			if (!isSoftwareAdapter) {
-				bool betterChoice = false;
-				if (gpuPreference == DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE) {
-					// For "most powerful", we look for maximum dedicated video memory
-					if (desc.DedicatedVideoMemory > bestMetric) {
-						bestMetric = desc.DedicatedVideoMemory;
-						betterChoice = true;
-					}
-				}
-				else if (gpuPreference == DXGI_GPU_PREFERENCE_MINIMUM_POWER) {
-					// For "most efficient", we look for minimum dedicated video memory
-					if (desc.DedicatedVideoMemory < bestMetric) {
-						bestMetric = desc.DedicatedVideoMemory;
-						betterChoice = true;
-					}
-				}
+                if (betterChoice) {
+                    bestAdapter = { adapter, desc };
+                }
+            }
 
-				if (betterChoice) {
-					bestAdapter = { adapter, desc };
-				}
-			}
+            adapter.Reset();
+        }
 
-			adapter.Reset(); // Release the current adapter for the next iteration
-		}
+        if (!bestAdapter.adapter)
+            THROW_RUNTIME_ERROR("No suitable GPU found for the specified preference.");
 
-		if (!bestAdapter.adapter) {
-			std::string error_message = "No suitable GPU found for the specified preference.";
-			Log(error_message, Logger::Type::Error);
-			throw std::runtime_error(error_message);
-		}
+        if (!IsAdapterCompatible(bestAdapter, executionProvider))
+            THROW_RUNTIME_ERROR("The most powerful adapter is not compatible with the execution provider " + OrtUtils::ToProviderString(executionProvider));
 
-		if (!IsAdapterCompatible(bestAdapter, executionProvider)) {
-			std::string error_message = "The most powerful adapter is not compatible with the execution provider " + OrtUtils::ToProviderString(executionProvider);
-			Log(error_message, Logger::Type::Error);
-			throw std::runtime_error(error_message);
-		}
+        return bestAdapter;
+#else
+        THROW_RUNTIME_ERROR("Adapters are only available on Windows platforms.");
+#endif
+    }
 
-		return bestAdapter;
-	}
+    bool Adapter::IsAdapterCompatible(AdapterInfo& adapterInfo, OrtUtils::ExecutionProvider& executionProvider) {
+#ifdef WINDOWS
+        switch (executionProvider)
+        {
+        case OrtUtils::ExecutionProvider::DirectML:
+            return IsDMLSupported(adapterInfo);
+        default:
+            return false;
+        }
+#else
+        return false;
+#endif
+    }
 
-	bool Adapter::IsAdapterCompatible(AdapterInfo& adapterInfo, OrtUtils::ExecutionProvider& executionProvider) {
-		switch (executionProvider)
-		{
-		case OrtUtils::ExecutionProvider::DirectML:
-			return IsDMLSupported(adapterInfo);
-		default:
-			return false;
-		}
-	}
+    bool Adapter::IsDMLSupported(AdapterInfo& adapterInfo) {
+#ifdef WINDOWS
+        ComPtr<ID3D12Device> device;
 
-	bool Adapter::IsDMLSupported(AdapterInfo& adapterInfo) {
-		ComPtr<ID3D12Device> device;
+        HRESULT hr = D3D12CreateDevice(
+            adapterInfo.adapter.Get(),
+            D3D_FEATURE_LEVEL_11_0,
+            IID_PPV_ARGS(&device)
+        );
 
-		// 1. Attempt to create a Direct3D 12 device using the given adapter
-		HRESULT hr = D3D12CreateDevice(
-			adapterInfo.adapter.Get(),
-			D3D_FEATURE_LEVEL_11_0, // Minimum feature level required for DirectML
-			IID_PPV_ARGS(&device)
-		);
+        if (FAILED(hr))
+            return false;
 
-		if (FAILED(hr))
-			return false; // Direct3D 12 device creation failed, so DirectML is not supported
+        ComPtr<IDMLDevice> dmlDevice;
+        hr = DMLCreateDevice(
+            device.Get(),
+            DML_CREATE_DEVICE_FLAG_NONE,
+            IID_PPV_ARGS(&dmlDevice)
+        );
 
-		// 2. Create a DirectML device
-		ComPtr<IDMLDevice> dmlDevice;
-		hr = DMLCreateDevice(
-			device.Get(),
-			DML_CREATE_DEVICE_FLAG_NONE,
-			IID_PPV_ARGS(&dmlDevice)
-		);
+        if (FAILED(hr))
+            return false;
 
-		if (FAILED(hr))
-			return false; // Failed to create a DirectML device
+        DML_FEATURE_LEVEL requestedFeatureLevels[] = {
+            DML_FEATURE_LEVEL_6_2,
+            DML_FEATURE_LEVEL_6_1,
+            DML_FEATURE_LEVEL_6_0,
+            DML_FEATURE_LEVEL_5_2,
+            DML_FEATURE_LEVEL_5_1,
+            DML_FEATURE_LEVEL_5_0,
+            DML_FEATURE_LEVEL_4_1,
+            DML_FEATURE_LEVEL_4_0,
+            DML_FEATURE_LEVEL_3_1,
+            DML_FEATURE_LEVEL_3_0,
+            DML_FEATURE_LEVEL_2_1,
+            DML_FEATURE_LEVEL_2_0,
+            DML_FEATURE_LEVEL_1_0,
+        };
 
-		// 3. Check for basic DirectML feature support
-		DML_FEATURE_LEVEL requestedFeatureLevels[] = {
-			DML_FEATURE_LEVEL_6_2, // Latest version
-			DML_FEATURE_LEVEL_6_1,
-			DML_FEATURE_LEVEL_6_0,
-			DML_FEATURE_LEVEL_5_2,
-			DML_FEATURE_LEVEL_5_1,
-			DML_FEATURE_LEVEL_5_0,
-			DML_FEATURE_LEVEL_4_1,
-			DML_FEATURE_LEVEL_4_0,
-			DML_FEATURE_LEVEL_3_1,
-			DML_FEATURE_LEVEL_3_0,
-			DML_FEATURE_LEVEL_2_1,
-			DML_FEATURE_LEVEL_2_0,
-			DML_FEATURE_LEVEL_1_0, // Basic support
-		};
+        DML_FEATURE_QUERY_FEATURE_LEVELS featureQuery = {};
+        featureQuery.RequestedFeatureLevelCount = _countof(requestedFeatureLevels);
+        featureQuery.RequestedFeatureLevels = requestedFeatureLevels;
 
-		DML_FEATURE_QUERY_FEATURE_LEVELS featureQuery = {};
-		featureQuery.RequestedFeatureLevelCount = _countof(requestedFeatureLevels);
-		featureQuery.RequestedFeatureLevels = requestedFeatureLevels;
+        DML_FEATURE_DATA_FEATURE_LEVELS featureData = {};
 
-		DML_FEATURE_DATA_FEATURE_LEVELS featureData = {};
+        hr = dmlDevice->CheckFeatureSupport(
+            DML_FEATURE_FEATURE_LEVELS,
+            sizeof(featureQuery),
+            &featureQuery,
+            sizeof(featureData),
+            &featureData
+        );
 
-		hr = dmlDevice->CheckFeatureSupport(
-			DML_FEATURE_FEATURE_LEVELS,
-			sizeof(featureQuery),
-			&featureQuery,
-			sizeof(featureData),
-			&featureData
-		);
-
-		if (FAILED(hr))
-			return false;
-
-		// Check if we got at least DML_FEATURE_LEVEL_1_0 support
-		return (featureData.MaxSupportedFeatureLevel >= DML_FEATURE_LEVEL_1_0);
-	}
+        return (featureData.MaxSupportedFeatureLevel >= DML_FEATURE_LEVEL_1_0);
+#else
+        return false;
+#endif
+    }
 }

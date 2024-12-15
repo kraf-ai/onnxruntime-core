@@ -10,11 +10,12 @@ namespace OrtUtils {
 		case OrtUtils::ExecutionProvider::DirectML:
 			return "DirectML";
 		default:
-			throw std::invalid_argument("Unsupported execution provider");
+			THROW_INVALID_ARGUMENT("Unsupported execution provider");
 		}
 	}
 }
 
+#ifdef WINDOWS
 void ThrowIfFailed(HRESULT result) {
 	if (FAILED(result)) {
 		std::ostringstream oss;
@@ -22,8 +23,7 @@ void ThrowIfFailed(HRESULT result) {
 		oss << GetStackTrace();
 
 		std::string logMessage = oss.str();
-		Logger::Log(logMessage, Logger::Type::Error);
-		throw std::runtime_error(logMessage);
+		THROW_RUNTIME_ERROR(logMessage);
 	}
 }
 
@@ -57,3 +57,4 @@ std::string GetStackTrace() {
 	SymCleanup(process);
 	return oss.str();
 }
+#endif

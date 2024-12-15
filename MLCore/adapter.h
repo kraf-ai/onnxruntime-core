@@ -6,19 +6,25 @@
 
 #pragma once
 
+#ifdef WINDOWS
 #include <dxgi1_6.h>              // DXGI 1.6
 #include <wrl/client.h>           // Windows Runtime Library - A way to work with COM (Component Object Model) objects
 #include <windows.h>              // Windows SDK headers
-#include <d3d12.h>				  // DirectX12: Direct3d
-#include <DirectML.h>			  
+#include <d3d12.h>                // DirectX12: Direct3D
+#include <DirectML.h>             // Direct Machine Learning
+#endif
+
 #include <iostream>
 
 #include "common.h"
 #include "utils.h"
 
-#pragma comment(lib, "d3d12.lib")
-#pragma comment(lib, "dxgi.lib")
-#pragma comment(lib, "DirectML.lib")
+#ifdef WINDOWS
+#pragma comment(lib, "d3d12.lib")     // Direct3D 12 library
+#pragma comment(lib, "dxgi.lib")      // DirectX Graphics Infrastructure
+#pragma comment(lib, "DirectML.lib")  // DirectML library
+#endif
+
 
 using Microsoft::WRL::ComPtr;
 

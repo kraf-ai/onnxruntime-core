@@ -8,8 +8,16 @@
 #include <stdexcept>
 #include <cctype>
 #include <iostream>
-#include <filesystem>
+
+#include "utils.h"
+
+#ifdef WINDOWS
 #include <windows.h>
+#endif
+
+#ifdef X64
+#include <filesystem>
+#endif
 
 /**
  * @class Logger
