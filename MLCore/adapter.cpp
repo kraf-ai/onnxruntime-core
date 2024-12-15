@@ -44,8 +44,8 @@ namespace MLBackend {
 #endif
     }
 
-    AdapterInfo Adapter::GetAdapter(DXGI_GPU_PREFERENCE gpuPreference, OrtUtils::ExecutionProvider& executionProvider) {
 #ifdef WINDOWS
+    AdapterInfo Adapter::GetAdapter(DXGI_GPU_PREFERENCE gpuPreference, OrtUtils::ExecutionProvider& executionProvider) {
         ComPtr<IDXGIFactory6> factory;
         ThrowIfFailed(CreateDXGIFactory1(IID_PPV_ARGS(&factory)));
 
@@ -91,10 +91,8 @@ namespace MLBackend {
             THROW_RUNTIME_ERROR("The most powerful adapter is not compatible with the execution provider " + OrtUtils::ToProviderString(executionProvider));
 
         return bestAdapter;
-#else
-        THROW_RUNTIME_ERROR("Adapters are only available on Windows platforms.");
-#endif
     }
+#endif
 
     bool Adapter::IsAdapterCompatible(AdapterInfo& adapterInfo, OrtUtils::ExecutionProvider& executionProvider) {
 #ifdef WINDOWS

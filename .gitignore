@@ -36,3 +36,6 @@
 x64/
 ARM64/
 packages/
+
+# MLCore
+log_mlcore.txt

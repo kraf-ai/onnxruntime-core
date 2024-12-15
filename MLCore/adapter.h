@@ -25,14 +25,19 @@
 #pragma comment(lib, "DirectML.lib")  // DirectML library
 #endif
 
-
+#ifdef WINDOWS
 using Microsoft::WRL::ComPtr;
+#endif
 
 namespace MLBackend {
+#ifdef WINDOWS
 	struct AdapterInfo {
 		ComPtr<IDXGIAdapter4> adapter;
 		DXGI_ADAPTER_DESC3 desc;
 	};
+#else
+	struct AdapterInfo {};
+#endif
 	
 	class Adapter {
 	public:
@@ -67,11 +72,12 @@ namespace MLBackend {
 		 */
 		static void PrintAdapterDetails(AdapterInfo& adapterInfo);
 	private:
+#ifdef WINDOWS
 		/**
 		 * Get the most appropiate adapter given the specified GPU preference.
 		 */
 		static AdapterInfo GetAdapter(DXGI_GPU_PREFERENCE gpuPreference, OrtUtils::ExecutionProvider& executionProvider);
-
+#endif
 		/*
 		 * Check if the given adapter is compatible with the given execution provider.
 		 */

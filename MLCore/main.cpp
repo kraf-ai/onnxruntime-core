@@ -2,7 +2,7 @@
 #include "adapter.h"
 
 int main() {
-    Logger::Init("log_backend.txt");
+    Logger::Init("log_mlcore.txt");
 
     auto dmlExecutionProvider = OrtUtils::ExecutionProvider::DirectML;
 

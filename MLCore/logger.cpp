@@ -4,38 +4,33 @@ void Logger::Init(const std::string& fileName) {
     if (logFile.is_open())
         logFile.close();
 
+#ifdef X64
     std::filesystem::path logFilePath;
 
-#ifdef _WIN32
-    char exePath[MAX_PATH];
-    GetModuleFileNameA(nullptr, exePath, MAX_PATH);
-    std::filesystem::path exeDir = std::filesystem::path(exePath).parent_path();
-    logFilePath = exeDir / fileName;
-#else
-    // Cross-platform alternative to get the current working directory
-    char exePath[1024];
-    ssize_t len = readlink("/proc/self/exe", exePath, sizeof(exePath) - 1);
-    if (len == -1) 
-        THROW_RUNTIME_ERROR("Failed to get executable path");
+    std::filesystem::path parentPath = std::filesystem::current_path().parent_path();
 
-    exePath[len] = '\0';
-    std::filesystem::path exeDir = std::filesystem::path(exePath).parent_path();
-    logFilePath = exeDir / fileName;
-#endif
+    if (!std::filesystem::exists(parentPath)) {
+        THROW_RUNTIME_ERROR("Parent path does not exist: " + parentPath.string());
+    }
+    if (!std::filesystem::is_directory(parentPath)) {
+        THROW_RUNTIME_ERROR("Parent path is not a directory: " + parentPath.string());
+    }
+
+    logFilePath = parentPath / fileName;
 
     logFile.open(logFilePath, std::ios::app);
 
     if (!logFile)
         THROW_RUNTIME_ERROR("Failed to open the log file: " + logFilePath.string());
 
-
     std::cout << "Log file path: " << logFilePath.string() << std::endl;
+#endif
 }
 
 
 void Logger::Log(const std::string& message, Type logType) {
     if (!logFile) {
-        Init("log_backend.txt");
+        Init("log_mlcore.txt");
     }
 
     std::string timestamp = GetCurrentTimestamp();
@@ -72,6 +67,6 @@ std::string Logger::GetCurrentTimestamp() {
 #endif
 
     std::ostringstream oss;
-    oss << std::put_time(&localTime, "%d %b. - %H:%M:%S");
+    oss << std::put_time(&localTime, "%d %b. %H:%M:%S");
     return oss.str();
 }

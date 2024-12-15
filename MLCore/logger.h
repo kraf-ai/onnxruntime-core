@@ -45,7 +45,7 @@ public:
      * ---
      *
      * If the logger has not been initialized, it will automatically initialize
-     * with the default file name `log_backend.txt`. The log message is written
+     * with the default file name `log_mlcore.txt`. The log message is written
      * both to the log file and to the terminal.
      *
      * Example log format:
@@ -55,7 +55,7 @@ public:
      * @param message: The message to log.
      * @param logType: The log type (e.g., `Type::Info`). Defaults to `Type::Info`.
      */
-    static void Init(const std::string& filePath = "log_backend.txt");
+    static void Init(const std::string& filePath = "log_mlcore.txt");
 
     /**
      * @brief Logs a message to the file with the specified log type.
