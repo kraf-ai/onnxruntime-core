@@ -39,9 +39,26 @@ Now you've cloned the MLCore submodule. It's time to add it as a project to your
 2. In the Solution Explorer, right-click on the solution name. And select `Add → Existing Project`.
 3. Then navigate to the folder `<project_path>/MLProject/MLCore` and select the file `MLCore.vcxproj`. The project will now appear under the solution in the Solution Explorer.
 4. Now we've to make sure the `MLCore` project is built before the main project. For that purpose, right-click on the solution name and select `Properties`. Then go into `Common Properties → Project Dependencies`. Select your project in the dropdown (`MLProject` in this example). And under the `Depends on:` you'll be able to see the `MLCore` dependency. Click on the checkbox to make it a dependency. Finally, click on `Apply`.
-5. Finally, make sure the `MLCore` is compiled as a dynamic library (.dll). To do that, right click on the `MLCore` project and select `Properties`. Then go into `Configuration Properties → General`. And modify the `Configuration Type` selecting the option `Dynamic Library (.dll)`.
+5. To compile the `MLCore` for Windows, right click on the solution name and select `Properties`. Then go to `Configuration Properties → Configuration`. Select the configuration `Debug` and for the `MLCore` project select the `Debug (Win)` configuration. Click on `Apply`. Now do the same for `Release`: Select the `Release` configuration and set `Release (Win)` as the `MLCore` configuration.
+6. Reference the `MLCore` library from `MLProject`. This is done by doing right click on `MLProject` and selecting `Add → Reference`. Then click on the checkbox at the left of `MLCore` and click on `OK`.
+7. Make sure the `MLCore` is compiled as a static library (.lib). To do that, right click on the `MLCore` project and select `Properties`. Then go into `Configuration Properties → General`. As the `Configuration` set `Debug (Win)`. And modify the `Configuration Type` property selecting the option `Static Library (.lib)` in the dropdown. Apply this change. Now repeat this step but changing the `Configuration` to `Release (Win)`.
+8. Update both projects to to C++17. In order to do that, right click on each of the projects and select `Properties`. Then go into `Configuration Properties → General`. And modify the `C++ Language Standard` property selecting the option `ISO C++17 Standard (/std:c++17)` in the dropdown. Apply this change. Do this for all the different configurations of both projects.
 
 🎉 And now you're ready to go! 
+
+To test it:
+1. Write the following main function in the `MLProject`:
+```cpp
+#include "../MLCore/common.h"
+#include "../MLCore/adapter.h"
+
+int main() {
+    MLBackend::AdapterInfo powerfulAdapter = MLBackend::Adapter::GetMostPowerfulAdapter(OrtUtils::ExecutionProvider::DirectML);
+    MLBackend::Adapter::PrintAdapterDetails(powerfulAdapter);
+    return 0;
+}
+```
+2. And now run the solution. You should be able to see a terminal with the information of the most powerful GPU of your system. 
 
 ### Status of the project
 
