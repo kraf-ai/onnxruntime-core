@@ -1,21 +1,18 @@
 #include "utils.h"
 
-namespace OrtUtils {
-	std::string ToProviderString(ExecutionProvider provider)
+std::string OrtUtils::ToProviderString(ExecutionProvider provider) {
+	switch (provider)
 	{
-		switch (provider)
-		{
-		case OrtUtils::ExecutionProvider::CPU:
-			return "CPU";
-		case OrtUtils::ExecutionProvider::DirectML:
-			return "DirectML";
-		default:
-			THROW_INVALID_ARGUMENT("Unsupported execution provider");
-		}
+	case OrtUtils::ExecutionProvider::CPU:
+		return "CPU";
+	case OrtUtils::ExecutionProvider::DirectML:
+		return "DirectML";
+	default:
+		THROW_RUNTIME_ERROR("The execution provider is not supported.");
 	}
 }
 
-#ifdef WINDOWS
+#ifdef _WIN64
 void ThrowIfFailed(HRESULT result) {
 	if (FAILED(result)) {
 		std::ostringstream oss;

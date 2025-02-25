@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef WINDOWS
+#ifdef _WIN64
 #include <windows.h>
 #include <dbghelp.h>
 #endif
@@ -11,29 +11,29 @@
 
 #include "common.h"
 
-#ifdef WINDOWS
+#ifdef _WIN64
 #pragma comment(lib, "Dbghelp.lib") // Link the DbgHelp library
 #endif
 
 namespace OrtUtils {
-	/**
-	 * @brief This enum contains the different execution providers from ONNX Runtime that are currently supported. 
-	 */
-	enum class ExecutionProvider {
-		CPU,			// Default CPU execution provider
-		DirectML		// DirectML for the GPUs on Windows
-	};
+    /**
+     * @brief This enum contains the different execution providers from ONNX Runtime that are currently supported.
+     */
+    enum class ExecutionProvider : int {
+        CPU,			// Default CPU execution provider
+        DirectML		// DirectML for the GPUs on Windows
+    };
 
-	/*
-	 * @brief Maps ExecutionProvider enum to the ONNX Runtime provider strings.
-	 * 
-	 * @param provider: A supported execution provider using the ExecutionProvider enum value.
-	 * @return A string corresponding to the ONNX Runtime execution provider name.
-	 */
-	std::string ToProviderString(ExecutionProvider provider);
+    /*
+     * @brief Maps ExecutionProvider enum to the ONNX Runtime provider strings.
+     *
+     * @param provider: A supported execution provider using the ExecutionProvider enum value.
+     * @return A string corresponding to the ONNX Runtime execution provider name.
+     */
+    std::string ToProviderString(ExecutionProvider provider);
 }
 
-#ifdef WINDOWS
+#ifdef _WIN64
 /**
  * @brief Utility to check if a function fails (returns a failing HRESULT) or throws an exception.
  *

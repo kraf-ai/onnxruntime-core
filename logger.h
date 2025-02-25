@@ -11,7 +11,7 @@
 
 #include "utils.h"
 
-#ifdef WINDOWS
+#ifdef _WIN64
 #include <windows.h>
 #endif
 
