@@ -49,7 +49,7 @@ Now you've cloned the MLCore submodule. It's time to add it as a project to your
 To test it:
 1. Write the following main function in the `MLProject`:
 ```cpp
-#include "../MLCore/common.h"
+#include "../MLCore/utils.h"
 #include "../MLCore/adapter.h"
 
 int main() {
